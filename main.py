@@ -1,11 +1,12 @@
 import logging
 import pickle
+import socket
+import time
 
 from telegram import ForceReply, Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 from wakeonlan import send_magic_packet
-
-from const_vars import PKL_DB_REG_USERS, PC_MAC, REG_KEY
+from const_vars import PKL_DB_REG_USERS, PC_MAC, REG_KEY, PC_LOCAL_IP
 
 # Enable logging
 logging.basicConfig(
@@ -40,6 +41,13 @@ async def start_pc(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         rf"sending package...",
         reply_markup=ForceReply(selective=True),
     )
+    while not check_network_reachability(PC_LOCAL_IP):
+        print("Network not reached. retrying...")
+        time.sleep(5)
+    await update.message.reply_html(
+        rf"PC Started! ",
+        reply_markup=ForceReply(selective=True),
+    )
 
 
 async def register(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -62,6 +70,16 @@ async def register(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         rf"registering {user.id}"
     )
     registered_users.append(user.id)
+
+
+def check_network_reachability(ip_address) -> bool:
+    # Создаем сокет
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(1)
+    result = sock.connect_ex(ip_address)
+    sock.close()
+    return result == 0
+
 
 def main() -> None:
     global registered_users
